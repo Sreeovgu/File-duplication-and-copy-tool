@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Deduplication Tool</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #f5f5f5;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .panel {
+      flex: 1;
+      padding: 20px;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel:last-child {
+      border-right: none;
+    }
+
+    .panel h2 {
+      margin-bottom: 15px;
+      font-size: 18px;
+      color: #333;
+    }
+
+    .folder-list {
+      flex: 1;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+    }
+
+    .folder-item {
+      padding: 8px;
+      margin-bottom: 5px;
+      background: #f9f9f9;
+      border-radius: 3px;
+      word-break: break-all;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0056b3;
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #545b62;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #218838;
+    }
+
+    .btn-warning {
+      background: #ffc107;
+      color: #212529;
+    }
+
+    .btn-warning:hover {
+      background: #e0a800;
+    }
+
+    .controls {
+      padding: 20px;
+      border-top: 1px solid #ddd;
+      background: white;
+    }
+
+    .status {
+      padding: 15px;
+      background: white;
+      border-top: 1px solid #ddd;
+    }
+
+    .status-item {
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .status-label {
+      font-weight: 600;
+      color: #555;
+      display: inline-block;
+      width: 200px;
+    }
+
+    .status-value {
+      color: #333;
+    }
+
+    .current-file {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      font-size: 13px;
+      word-break: break-all;
+    }
+
+    .filter-section {
+      padding: 15px;
+      background: white;
+      border-top: 1px solid #ddd;
+      border-bottom: 1px solid #ddd;
+      display: none;
+    }
+
+    .filter-section.visible {
+      display: block;
+    }
+
+    .filter-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 10px;
+      background: #f9f9f9;
+      border-radius: 4px;
+    }
+
+    .filter-item {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+    }
+
+    .filter-item input[type="checkbox"] {
+      margin-right: 8px;
+      cursor: pointer;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c82333;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+      background-color: white;
+      margin: 5% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 90%;
+      max-width: 1200px;
+      max-height: 80vh;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #ddd;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 24px;
+      color: #333;
+    }
+
+    .close {
+      color: #aaa;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .close:hover {
+      color: #000;
+    }
+
+    .report-table-container {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .report-table th {
+      background-color: #007bff;
+      color: white;
+      padding: 12px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .report-table td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .report-table tr:hover {
+      background-color: #f5f5f5;
+    }
+
+    .status-copied {
+      color: #28a745;
+      font-weight: 600;
+    }
+
+    .status-not-copied {
+      color: #dc3545;
+      font-weight: 600;
+    }
+
+    .status-duplicate {
+      color: #ffc107;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <h2>Source Folders</h2>
+      <div class="folder-list" id="sourceList"></div>
+      <button class="btn-primary" id="addSourceBtn">Add Source Folder</button>
+    </div>
+    <div class="panel">
+      <h2>Destination Folder</h2>
+      <div class="folder-list" id="destList"></div>
+      <button class="btn-primary" id="selectDestBtn">Select Destination Folder</button>
+      <button class="btn-secondary" id="mergeBtn" style="margin-top: 10px;">Remove Duplicates & Merge Folders</button>
+    </div>
+  </div>
+  <div class="filter-section" id="filterSection">
+    <div class="filter-title">File Type Filter (only checked types will be copied):</div>
+    <div class="filter-grid" id="filterGrid"></div>
+  </div>
+  <div class="controls">
+    <button class="btn-success" id="startBtn">Start</button>
+    <button class="btn-warning" id="pauseBtn" disabled>Pause</button>
+    <button class="btn-secondary" id="resumeBtn" disabled>Resume</button>
+    <button class="btn-danger" id="resetBtn">Reset</button>
+  </div>
+  <div class="status">
+    <div class="status-item">
+      <span class="status-label">Files Scanned:</span>
+      <span class="status-value" id="scanned">0</span>
+    </div>
+    <div class="status-item">
+      <span class="status-label">Files Copied:</span>
+      <span class="status-value" id="copied">0</span>
+    </div>
+    <div class="status-item">
+      <span class="status-label">Duplicates Ignored:</span>
+      <span class="status-value" id="duplicates">0</span>
+    </div>
+    <div class="status-item">
+      <span class="status-label">Total Size Copied:</span>
+      <span class="status-value" id="sizeCopied">0 MB</span>
+    </div>
+    <div class="current-file" id="currentFile" style="display: none;"></div>
+  </div>
+
+  <div id="reportModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Folder Copy Report</h2>
+        <span class="close" id="closeReport">&times;</span>
+      </div>
+      <div class="report-table-container">
+        <table class="report-table" id="reportTable">
+          <thead>
+            <tr>
+              <th>Source Folder</th>
+              <th>Destination Folder</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="reportTableBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let sourceFolders = [];
+    let destinationFolder = null;
+    let isProcessing = false;
+    let isPaused = false;
+    let currentSourceFolders = [];
+    let currentDestinationFolder = null;
+    let selectedExtensions = new Set();
+
+    const fileFormats = [
+      { label: 'Images - JPG', ext: 'jpg' },
+      { label: 'Images - JPEG', ext: 'jpeg' },
+      { label: 'Images - PNG', ext: 'png' },
+      { label: 'Images - GIF', ext: 'gif' },
+      { label: 'Images - BMP', ext: 'bmp' },
+      { label: 'Images - WebP', ext: 'webp' },
+      { label: 'Images - SVG', ext: 'svg' },
+      { label: 'Documents - PDF', ext: 'pdf' },
+      { label: 'Documents - DOC', ext: 'doc' },
+      { label: 'Documents - DOCX', ext: 'docx' },
+      { label: 'Documents - TXT', ext: 'txt' },
+      { label: 'Documents - RTF', ext: 'rtf' },
+      { label: 'Documents - XLS', ext: 'xls' },
+      { label: 'Documents - XLSX', ext: 'xlsx' },
+      { label: 'Documents - PPT', ext: 'ppt' },
+      { label: 'Documents - PPTX', ext: 'pptx' },
+      { label: 'Audio - MP3', ext: 'mp3' },
+      { label: 'Audio - WAV', ext: 'wav' },
+      { label: 'Audio - FLAC', ext: 'flac' },
+      { label: 'Audio - AAC', ext: 'aac' },
+      { label: 'Audio - OGG', ext: 'ogg' },
+      { label: 'Audio - M4A', ext: 'm4a' },
+      { label: 'Video - MP4', ext: 'mp4' },
+      { label: 'Video - AVI', ext: 'avi' },
+      { label: 'Video - MKV', ext: 'mkv' },
+      { label: 'Video - MOV', ext: 'mov' },
+      { label: 'Video - WMV', ext: 'wmv' },
+      { label: 'Video - FLV', ext: 'flv' },
+      { label: 'Video - WebM', ext: 'webm' },
+      { label: 'Archives - ZIP', ext: 'zip' },
+      { label: 'Archives - RAR', ext: 'rar' },
+      { label: 'Archives - 7Z', ext: '7z' },
+      { label: 'Archives - TAR', ext: 'tar' },
+      { label: 'Archives - GZ', ext: 'gz' },
+      { label: 'Code - JS', ext: 'js' },
+      { label: 'Code - HTML', ext: 'html' },
+      { label: 'Code - CSS', ext: 'css' },
+      { label: 'Code - PY', ext: 'py' },
+      { label: 'Code - JAVA', ext: 'java' },
+      { label: 'Code - CPP', ext: 'cpp' },
+      { label: 'Code - C', ext: 'c' },
+      { label: 'Code - JSON', ext: 'json' },
+      { label: 'Code - XML', ext: 'xml' }
+    ];
+
+    const sourceList = document.getElementById('sourceList');
+    const destList = document.getElementById('destList');
+    const addSourceBtn = document.getElementById('addSourceBtn');
+    const selectDestBtn = document.getElementById('selectDestBtn');
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const resumeBtn = document.getElementById('resumeBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const filterSection = document.getElementById('filterSection');
+    const filterGrid = document.getElementById('filterGrid');
+
+    function initFilterGrid() {
+      filterGrid.innerHTML = fileFormats.map(format => `
+        <div class="filter-item">
+          <input type="checkbox" id="filter-${format.ext}" data-ext="${format.ext}">
+          <label for="filter-${format.ext}">${format.label}</label>
+        </div>
+      `).join('');
+
+      filterGrid.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+          const ext = e.target.dataset.ext.toLowerCase();
+          if (e.target.checked) {
+            selectedExtensions.add(ext);
+          } else {
+            selectedExtensions.delete(ext);
+          }
+        });
+      });
+    }
+
+    function getSelectedExtensions() {
+      return Array.from(selectedExtensions);
+    }
+
+    function updateSourceList() {
+      sourceList.innerHTML = sourceFolders.length === 0 
+        ? '<div style="color: #999; padding: 10px;">No source folders selected</div>'
+        : sourceFolders.map(folder => `<div class="folder-item">${folder}</div>`).join('');
+    }
+
+    function updateDestList() {
+      destList.innerHTML = destinationFolder 
+        ? `<div class="folder-item">${destinationFolder}</div>`
+        : '<div style="color: #999; padding: 10px;">No destination folder selected</div>';
+    }
+
+    addSourceBtn.addEventListener('click', async () => {
+      if (isProcessing) return;
+      const folders = await window.electronAPI.selectSourceFolders();
+      folders.forEach(folder => {
+        if (!sourceFolders.includes(folder)) {
+          sourceFolders.push(folder);
+        }
+      });
+      updateSourceList();
+      if (sourceFolders.length > 0 && destinationFolder) {
+        filterSection.classList.add('visible');
+      }
+    });
+
+    selectDestBtn.addEventListener('click', async () => {
+      if (isProcessing) return;
+      const folder = await window.electronAPI.selectDestinationFolder();
+      if (folder) {
+        destinationFolder = folder;
+        updateDestList();
+        if (sourceFolders.length > 0 && destinationFolder) {
+          filterSection.classList.add('visible');
+        }
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      if (isProcessing) return;
+      sourceFolders = [];
+      destinationFolder = null;
+      selectedExtensions.clear();
+      updateSourceList();
+      updateDestList();
+      filterSection.classList.remove('visible');
+      filterGrid.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      document.getElementById('scanned').textContent = '0';
+      document.getElementById('copied').textContent = '0';
+      document.getElementById('duplicates').textContent = '0';
+      document.getElementById('sizeCopied').textContent = '0 MB';
+      document.getElementById('currentFile').style.display = 'none';
+    });
+
+    const mergeBtn = document.getElementById('mergeBtn');
+    mergeBtn.addEventListener('click', async () => {
+      if (!destinationFolder || isProcessing) {
+        alert('Please select a destination folder first.');
+        return;
+      }
+      
+      if (confirm('This will merge folders with the same name and remove duplicate files in the destination folder. Continue?')) {
+        isProcessing = true;
+        mergeBtn.disabled = true;
+        startBtn.disabled = true;
+        addSourceBtn.disabled = true;
+        selectDestBtn.disabled = true;
+        resetBtn.disabled = true;
+        
+        await window.electronAPI.mergeFolders(destinationFolder);
+      }
+    });
+
+    startBtn.addEventListener('click', async () => {
+      if (sourceFolders.length === 0 || !destinationFolder || isProcessing) return;
+      if (selectedExtensions.size === 0) {
+        alert('Please select at least one file type to copy.');
+        return;
+      }
+      
+      isProcessing = true;
+      isPaused = false;
+      currentSourceFolders = [...sourceFolders];
+      currentDestinationFolder = destinationFolder;
+      
+      startBtn.disabled = true;
+      pauseBtn.disabled = false;
+      resumeBtn.disabled = true;
+      addSourceBtn.disabled = true;
+      selectDestBtn.disabled = true;
+      resetBtn.disabled = true;
+
+      const extensions = getSelectedExtensions();
+      await window.electronAPI.startProcess(currentSourceFolders, currentDestinationFolder, extensions);
+    });
+
+    pauseBtn.addEventListener('click', async () => {
+      await window.electronAPI.pauseProcess();
+      isPaused = true;
+      pauseBtn.disabled = true;
+      resumeBtn.disabled = false;
+    });
+
+    resumeBtn.addEventListener('click', async () => {
+      isPaused = false;
+      pauseBtn.disabled = false;
+      resumeBtn.disabled = true;
+      const extensions = getSelectedExtensions();
+      await window.electronAPI.resumeProcess(currentSourceFolders, currentDestinationFolder, extensions);
+    });
+
+    window.electronAPI.onProgressUpdate((data) => {
+      document.getElementById('scanned').textContent = data.stats.scanned;
+      document.getElementById('copied').textContent = data.stats.copied;
+      document.getElementById('duplicates').textContent = data.stats.duplicates;
+      const sizeMB = (data.stats.sizeCopied / (1024 * 1024)).toFixed(2);
+      document.getElementById('sizeCopied').textContent = `${sizeMB} MB`;
+      
+      const currentFileEl = document.getElementById('currentFile');
+      if (data.currentFile) {
+        currentFileEl.style.display = 'block';
+        currentFileEl.textContent = `Processing: ${data.currentFile}`;
+      }
+    });
+
+    window.electronAPI.onProcessComplete((data) => {
+      isProcessing = false;
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+      resumeBtn.disabled = true;
+      addSourceBtn.disabled = false;
+      selectDestBtn.disabled = false;
+      resetBtn.disabled = false;
+      mergeBtn.disabled = false;
+      
+      document.getElementById('scanned').textContent = data.stats.scanned;
+      document.getElementById('copied').textContent = data.stats.copied;
+      document.getElementById('duplicates').textContent = data.stats.duplicates;
+      const sizeMB = (data.stats.sizeCopied / (1024 * 1024)).toFixed(2);
+      document.getElementById('sizeCopied').textContent = `${sizeMB} MB`;
+      
+      document.getElementById('currentFile').style.display = 'none';
+      
+      if (data.report && data.report.length > 0) {
+        displayReport(data.report);
+      }
+    });
+
+    function displayReport(report) {
+      const tableBody = document.getElementById('reportTableBody');
+      tableBody.innerHTML = '';
+      
+      report.forEach(item => {
+        const row = document.createElement('tr');
+        
+        const sourceCell = document.createElement('td');
+        sourceCell.textContent = item.sourcePath;
+        sourceCell.style.wordBreak = 'break-all';
+        
+        const destCell = document.createElement('td');
+        destCell.textContent = item.destinationPath;
+        destCell.style.wordBreak = 'break-all';
+        
+        const statusCell = document.createElement('td');
+        statusCell.textContent = item.status;
+        if (item.status === 'Copied') {
+          statusCell.className = 'status-copied';
+        } else if (item.status.includes('Duplicate')) {
+          statusCell.className = 'status-duplicate';
+        } else {
+          statusCell.className = 'status-not-copied';
+        }
+        
+        row.appendChild(sourceCell);
+        row.appendChild(destCell);
+        row.appendChild(statusCell);
+        tableBody.appendChild(row);
+      });
+      
+      const modal = document.getElementById('reportModal');
+      modal.style.display = 'block';
+    }
+
+    const closeReport = document.getElementById('closeReport');
+    closeReport.addEventListener('click', () => {
+      document.getElementById('reportModal').style.display = 'none';
+    });
+
+    window.addEventListener('click', (event) => {
+      const modal = document.getElementById('reportModal');
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+
+    window.electronAPI.onMergeConfirmation((data) => {
+      let message = 'Found duplicate folders (ignoring underscore suffixes):\n\n';
+      data.folders.forEach(folder => {
+        message += `- "${folder.name}": ${folder.count} folders\n`;
+      });
+      message += '\nMerge these folders?';
+      
+      if (confirm(message)) {
+        window.electronAPI.confirmMerge(destinationFolder, data.folders);
+      } else {
+        isProcessing = false;
+        mergeBtn.disabled = false;
+        startBtn.disabled = false;
+        addSourceBtn.disabled = false;
+        selectDestBtn.disabled = false;
+        resetBtn.disabled = false;
+      }
+    });
+
+    window.electronAPI.onMergeComplete((data) => {
+      isProcessing = false;
+      mergeBtn.disabled = false;
+      startBtn.disabled = false;
+      addSourceBtn.disabled = false;
+      selectDestBtn.disabled = false;
+      resetBtn.disabled = false;
+      
+      if (data.message) {
+        alert(data.message);
+      }
+      
+      if (data.error) {
+        alert('Error: ' + data.error);
+      }
+      
+      document.getElementById('currentFile').style.display = 'none';
+    });
+
+    initFilterGrid();
+    updateSourceList();
+    updateDestList();
+  </script>
+</body>
+</html>
+
